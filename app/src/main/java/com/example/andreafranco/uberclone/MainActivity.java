@@ -1,6 +1,7 @@
 package com.example.andreafranco.uberclone;
 
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.support.annotation.IntDef;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -52,14 +53,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mPasswordEditText = findViewById(R.id.password_edittext);
 
         if (ParseUser.getCurrentUser() != null) {
-            //Go to another activity
+            //Go to the other activity
+            int userType = (Boolean) ParseUser.getCurrentUser().get("driver")? DRIVER : RIDER;
+            moveToMap(userType);
         }
     }
 
     @Override
     public void onClick(View view) {
         InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-        inputMethodManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+        if (inputMethodManager.isActive()) inputMethodManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
         int id = view.getId();
         switch (id) {
 
@@ -118,6 +121,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     public void done(ParseUser user, ParseException e) {
                         if (e == null) {
                             //Login Ok
+                            moveToMap(user.getInt("driver"));
                         } else {
                             Toast.makeText(MainActivity.this, "Login error:", Toast.LENGTH_SHORT).show();
                         }
@@ -125,7 +129,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 });
     }
 
-    private void doSignUp(@UserType int user) {
+    private void doSignUp(@UserType final int user) {
         ParseUser currentUser = new ParseUser();
         currentUser.setUsername(mUsernameEditText.getText().toString());
         currentUser.setPassword(mPasswordEditText.getText().toString());
@@ -135,8 +139,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void done(ParseException e) {
                 if (e == null) {
                     //Sign up completed
+                    moveToMap(user);
                 }
             }
         });
+    }
+
+    private void moveToMap(@UserType int userType) {
+        Intent intent = new Intent(this, MapsActivity.class);
+        intent.putExtra("driver", userType);
+        startActivity(intent);
     }
 }
