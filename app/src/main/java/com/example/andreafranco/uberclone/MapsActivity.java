@@ -1,167 +1,92 @@
 package com.example.andreafranco.uberclone;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
-import android.location.Geocoder;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
-import android.os.Build;
-import android.support.annotation.NonNull;
-import android.support.design.widget.FloatingActionButton;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.FragmentActivity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.net.Uri;
 import android.os.Bundle;
-import android.support.v4.content.ContextCompat;
-import android.view.View;
+import android.support.v4.app.FragmentActivity;
 import android.widget.Toast;
 
-import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.MarkerOptions;
+import com.example.andreafranco.uberclone.fragments.DriverFragment;
+import com.example.andreafranco.uberclone.fragments.RiderFragment;
+import com.parse.LogOutCallback;
 import com.parse.ParseException;
-import com.parse.ParseGeoPoint;
-import com.parse.ParseObject;
 import com.parse.ParseUser;
-import com.parse.SaveCallback;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
-
-    private static final int PERMISSION_CODE = 0;
-    private static final float ZOOM_LEVEL = 15;
-
-    private GoogleMap mMap;
-    private boolean mDriverUser;
-    private LocationManager mLocationManager;
-    private LocationListener mLocationListener;
+public class MapsActivity extends FragmentActivity implements RiderFragment.OnFragmentInteractionListener {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
-        mDriverUser = false;
-        mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
 
-        Bundle extras = getIntent().getExtras();
-        if (extras != null) {
-            int driver = extras.getInt("driver");
-            mDriverUser = driver == MainActivity.DRIVER;
-        }
-        FloatingActionButton driverFab = findViewById(R.id.driver_fab);
-        if (mDriverUser) {
-            driverFab.setVisibility(View.GONE);
+        if (findViewById(R.id.fragment_container) != null) {
+            // However, if we're being restored from a previous state,
+            // then we don't need to do anything and should return or else
+            // we could end up with overlapping fragments.
+            if (savedInstanceState != null) {
+                return;
+            }
+
+            //Check if rider or driver
+            Bundle extras = getIntent().getExtras();
+            if (extras != null && extras.get("driver") != null) {
+                int driver = (int) extras.get("driver");
+                if (driver == MainActivity.DRIVER) {
+                    DriverFragment fragment = DriverFragment.newInstance();
+                    fragment.setArguments(getIntent().getExtras());
+
+                    // Add the fragment to the 'fragment_container' FrameLayout
+                    getSupportFragmentManager().beginTransaction()
+                            .add(R.id.fragment_container, fragment).commit();
+                } else {
+                    RiderFragment fragment = RiderFragment.newInstance();
+                    fragment.setArguments(getIntent().getExtras());
+
+                    // Add the fragment to the 'fragment_container' FrameLayout
+                    getSupportFragmentManager().beginTransaction()
+                            .add(R.id.fragment_container, fragment).commit();
+                }
+            }
         }
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == PERMISSION_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                    mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
-                    Location lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                    if (lastKnownLocation != null) {
-                        updateMap(lastKnownLocation);
-                    }
-                }
-            }
-        }
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    public void onFragmentInteraction(Uri uri) {
+
     }
 
-    public void callDriverClick(View view) {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_CODE);
-        } else {
-            //TODO change the icon with cancel request
-            Location lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            if (lastKnownLocation != null) {
-                ParseObject newRequest = new ParseObject("request");
-                newRequest.put("rider", ParseUser.getCurrentUser().getUsername());
-                ParseGeoPoint parseGeoPoint = new ParseGeoPoint(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
-                newRequest.put("location", parseGeoPoint);
-                newRequest.saveInBackground(new SaveCallback() {
+    @Override
+    public void onBackPressed() {
+        new AlertDialog.Builder(this)
+                .setCancelable(false)
+                .setTitle("Info message")
+                .setMessage("Would you like to log out?")
+                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
                     @Override
-                    public void done(ParseException e) {
-                        if (e == null) {
-                            //request saved
-                        }
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
                     }
-                });
-
-            } else {
-                Toast.makeText(this, "Couldn't find location. Try again", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-    /**
-     * Manipulates the map once available.
-     * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
-     * If Google Play services is not installed on the device, the user will be prompted to install
-     * it inside the SupportMapFragment. This method will only be triggered once the user has
-     * installed Google Play services and returned to the app.
-     */
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        mMap = googleMap;
-        setUpLocationManager();
+                })
+                .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        logOut();
+                    }
+                }).show();
     }
 
-    private void setUpLocationManager() {
-        mLocationListener = new LocationListener() {
+    private void logOut() {
+        ParseUser.logOutInBackground(new LogOutCallback() {
             @Override
-            public void onLocationChanged(Location location) {
-                updateMap(location);
-            }
-
-            @Override
-            public void onStatusChanged(String s, int i, Bundle bundle) {
-
-            }
-
-            @Override
-            public void onProviderEnabled(String s) {
-
-            }
-
-            @Override
-            public void onProviderDisabled(String s) {
-
-            }
-        };
-
-        if (Build.VERSION.SDK_INT < 23) {
-            mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
-        } else {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_CODE);
-            } else {
-                mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
-                Location lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                if (lastKnownLocation != null) {
-                    updateMap(lastKnownLocation);
+            public void done(ParseException e) {
+                if (e == null) {
+                    //Log out done
+                    finish();
+                } else {
+                    Toast.makeText(getApplicationContext(), "Error logging out: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 }
             }
-        }
-    }
-
-    /**
-     * Add a marker to user position
-     * @param location
-     */
-    private void updateMap(Location location) {
-        LatLng userLocation = new LatLng(location.getLatitude(), location.getLongitude());
-        mMap.clear();
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(userLocation, ZOOM_LEVEL));
-        mMap.addMarker(new MarkerOptions().position(userLocation).title("User"));
+        });
     }
 }
