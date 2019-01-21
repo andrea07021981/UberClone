@@ -1,7 +1,6 @@
 package com.example.andreafranco.uberclone.fragments;
 
 import android.Manifest;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -18,22 +17,30 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.example.andreafranco.uberclone.R;
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.parse.Parse;
-import com.parse.ParseLiveQueryClient;
+import com.parse.FindCallback;
+import com.parse.ParseException;
+import com.parse.ParseGeoPoint;
 import com.parse.ParseObject;
 import com.parse.ParseQuery;
-import com.parse.SubscriptionHandling;
+import com.parse.ParseUser;
 
-import org.w3c.dom.Comment;
+import java.util.ArrayList;
+import java.util.List;
 
 import static android.content.Context.LOCATION_SERVICE;
 
@@ -45,7 +52,7 @@ import static android.content.Context.LOCATION_SERVICE;
  * Use the {@link DriverFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class DriverFragment extends Fragment implements OnMapReadyCallback {
+public class DriverFragment extends Fragment implements OnMapReadyCallback, GoogleMap.OnInfoWindowClickListener {
     private static final int PERMISSION_CODE = 0;
     private static final float ZOOM_LEVEL = 15;
 
@@ -94,6 +101,58 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback {
         return view;
     }
 
+    private void updateRequests(final Location userLocation) {
+        Location lastKnownPosition = getLastKnownPosition();
+        ParseQuery<ParseObject> requestQuery = new ParseQuery<ParseObject>("request");
+        requestQuery.whereNotEqualTo("rider", ParseUser.getCurrentUser().getUsername());
+        requestQuery.whereNear("location", new ParseGeoPoint(lastKnownPosition.getLatitude(), lastKnownPosition.getLongitude()));
+        requestQuery.findInBackground(new FindCallback<ParseObject>() {
+            @Override
+            public void done(List<ParseObject> objects, ParseException e) {
+                if (e == null) {
+                    if (objects.size() > 0) {
+                        if (mMap != null) {
+                            List<Marker> markers = new ArrayList<>();
+                            mMap.clear();
+                            for (ParseObject object : objects) {
+                                ParseGeoPoint parseGeoPoint = (ParseGeoPoint) object.get("location");
+                                LatLng userLocation = new LatLng(parseGeoPoint.getLatitude(), parseGeoPoint.getLongitude());
+                                String rider = object.getString("rider");
+
+                                MarkerOptions riderRequestMarker = new MarkerOptions();
+                                riderRequestMarker.position(userLocation);
+                                riderRequestMarker.title(rider);
+                                riderRequestMarker.anchor(0.5f, 0.5f);
+                                riderRequestMarker.icon(BitmapDescriptorFactory.fromResource(R.drawable.rider_marker));
+
+                                markers.add(mMap.addMarker(riderRequestMarker));
+                            }
+
+                            //Add the current driver position
+                            MarkerOptions riderRequestMarker = new MarkerOptions();
+                            LatLng driverLocation = new LatLng(userLocation.getLatitude(), userLocation.getLongitude());
+                            riderRequestMarker.position(driverLocation);
+                            riderRequestMarker.title(ParseUser.getCurrentUser().getUsername());
+                            riderRequestMarker.anchor(0.5f, 0.5f);
+                            riderRequestMarker.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+                            markers.add(mMap.addMarker(riderRequestMarker));
+
+                            LatLngBounds.Builder builder = new LatLngBounds.Builder();
+                            for (Marker marker : markers) {
+                                builder.include(marker.getPosition());
+                            }
+
+                            LatLngBounds bounds = builder.build();
+                            int padding = 0; // offset from edges of the map in pixels
+                            CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, padding);
+                            mMap.animateCamera(cu);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     public void onButtonPressed(Uri uri) {
         if (mListener != null) {
             mListener.onFragmentInteraction(uri);
@@ -123,7 +182,7 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
-                    Location lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                    Location lastKnownLocation = getLastKnownPosition();
                     if (lastKnownLocation != null) {
                         updateMap(lastKnownLocation);
                     }
@@ -131,6 +190,14 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback {
             }
         }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
+
+    private Location getLastKnownPosition() {
+        Location lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        if (lastKnownLocation == null) {
+            lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        }
+        return lastKnownLocation;
     }
 
     private void setUpLocationManager() {
@@ -163,7 +230,7 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback {
                 requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_CODE);
             } else {
                 mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
-                Location lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                Location lastKnownLocation = getLastKnownPosition();
                 if (lastKnownLocation != null) {
                     updateMap(lastKnownLocation);
                 }
@@ -176,32 +243,21 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback {
      * @param location
      */
     private void updateMap(Location location) {
-        LatLng userLocation = new LatLng(location.getLatitude(), location.getLongitude());
-        mMap.clear();
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(userLocation, ZOOM_LEVEL));
-        mMap.addMarker(new MarkerOptions().position(userLocation).title("Driver"));
-
-        //TODO request the status of all requests and draw again on map the markers
-        ParseLiveQueryClient parseLiveQueryClient = ParseLiveQueryClient.Factory.getClient();
-        ParseQuery<ParseObject> query= ParseQuery.getQuery("Request");
-
-        SubscriptionHandling<ParseObject> subscriptionHandling = parseLiveQueryClient.subscribe(query);
-
-
-        subscriptionHandling.handleEvent(SubscriptionHandling.Event.CREATE,
-                new SubscriptionHandling.HandleEventCallback<ParseObject>() {
-                    @Override
-                    public void onEvent(ParseQuery<ParseObject> query, ParseObject object) {
-
-                        Toast.makeText(getContext(), "new data", Toast.LENGTH_LONG).show();
-                    }
-                });
+        //TODO: Add live query here and on server configuration. We need to update map everytime Requests change
+        updateRequests(location);
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+        mMap.setOnInfoWindowClickListener(this);
+        mMap.setInfoWindowAdapter(new UserWindowAdapter());
         setUpLocationManager();
+    }
+
+    @Override
+    public void onInfoWindowClick(Marker marker) {
+
     }
 
     /**
@@ -217,5 +273,38 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback {
     public interface OnFragmentInteractionListener {
         // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
+    }
+
+    class UserWindowAdapter implements GoogleMap.InfoWindowAdapter {
+
+        private final View myContentsView;
+
+        UserWindowAdapter(){
+            myContentsView = getLayoutInflater().inflate(R.layout.custom_info_contents_rider, null);
+        }
+
+        @Override
+        public View getInfoContents(Marker marker) {
+
+            TextView nameTextView = ((TextView)myContentsView.findViewById(R.id.name_textview));
+            nameTextView.setText(marker.getTitle());
+            ImageView userProfileImageView = myContentsView.findViewById(R.id.user_profile_mageview);
+            //userProfileImageView.setImageBitmap(User profile image saved on server);
+            Button acceptRequestButton = myContentsView.findViewById(R.id.accept_button);
+            acceptRequestButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    //TODO send the accept message to the server
+                }
+            });
+            return myContentsView;
+        }
+
+        @Override
+        public View getInfoWindow(Marker marker) {
+            // TODO Auto-generated method stub
+            return null;
+        }
+
     }
 }
