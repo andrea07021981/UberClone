@@ -114,7 +114,7 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
     }
 
     private void updateRiderStatus() {
-        ParseQuery<ParseObject> requestQuery = new ParseQuery<ParseObject>("request");
+        ParseQuery<ParseObject> requestQuery = new ParseQuery<ParseObject>("Request");
         requestQuery.whereEqualTo("rider", ParseUser.getCurrentUser().getUsername());
         requestQuery.findInBackground(new FindCallback<ParseObject>() {
             @Override
@@ -171,7 +171,7 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_CODE);
         } else {
             if (mRequestActive) {
-                ParseQuery<ParseObject> requestQuery = new ParseQuery<ParseObject>("request");
+                ParseQuery<ParseObject> requestQuery = new ParseQuery<ParseObject>("Request");
                 requestQuery.whereEqualTo("rider", ParseUser.getCurrentUser().getUsername());
                 requestQuery.findInBackground(new FindCallback<ParseObject>() {
                     @Override
@@ -189,7 +189,7 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
             } else {
                 Location lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
                 if (lastKnownLocation != null) {
-                    ParseObject newRequest = new ParseObject("request");
+                    ParseObject newRequest = new ParseObject("Request");
                     newRequest.put("rider", ParseUser.getCurrentUser().getUsername());
                     ParseGeoPoint parseGeoPoint = new ParseGeoPoint(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
                     newRequest.put("location", parseGeoPoint);

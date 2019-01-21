@@ -1,6 +1,7 @@
 package com.example.andreafranco.uberclone.fragments;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -17,6 +18,7 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import com.example.andreafranco.uberclone.R;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -25,6 +27,13 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.parse.Parse;
+import com.parse.ParseLiveQueryClient;
+import com.parse.ParseObject;
+import com.parse.ParseQuery;
+import com.parse.SubscriptionHandling;
+
+import org.w3c.dom.Comment;
 
 import static android.content.Context.LOCATION_SERVICE;
 
@@ -173,6 +182,20 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback {
         mMap.addMarker(new MarkerOptions().position(userLocation).title("Driver"));
 
         //TODO request the status of all requests and draw again on map the markers
+        ParseLiveQueryClient parseLiveQueryClient = ParseLiveQueryClient.Factory.getClient();
+        ParseQuery<ParseObject> query= ParseQuery.getQuery("Request");
+
+        SubscriptionHandling<ParseObject> subscriptionHandling = parseLiveQueryClient.subscribe(query);
+
+
+        subscriptionHandling.handleEvent(SubscriptionHandling.Event.CREATE,
+                new SubscriptionHandling.HandleEventCallback<ParseObject>() {
+                    @Override
+                    public void onEvent(ParseQuery<ParseObject> query, ParseObject object) {
+
+                        Toast.makeText(getContext(), "new data", Toast.LENGTH_LONG).show();
+                    }
+                });
     }
 
     @Override
