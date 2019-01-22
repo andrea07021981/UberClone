@@ -9,9 +9,6 @@ import android.widget.Toast;
 
 import com.example.andreafranco.uberclone.fragments.DriverFragment;
 import com.example.andreafranco.uberclone.fragments.RiderFragment;
-import com.parse.LogOutCallback;
-import com.parse.ParseException;
-import com.parse.ParseUser;
 
 public class MapsActivity extends FragmentActivity implements RiderFragment.OnFragmentInteractionListener {
 
@@ -77,7 +74,7 @@ public class MapsActivity extends FragmentActivity implements RiderFragment.OnFr
     }
 
     private void logOut() {
-        ParseUser.logOutInBackground(new LogOutCallback() {
+        /*ParseUser.logOutInBackground(new LogOutCallback() {
             @Override
             public void done(ParseException e) {
                 if (e == null) {
@@ -87,6 +84,6 @@ public class MapsActivity extends FragmentActivity implements RiderFragment.OnFr
                     Toast.makeText(getApplicationContext(), "Error logging out: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 }
             }
-        });
+        });*/
     }
 }

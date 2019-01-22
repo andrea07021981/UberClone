@@ -3,6 +3,7 @@ package com.example.andreafranco.uberclone;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.support.annotation.IntDef;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -14,12 +15,11 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.drive.query.internal.LogicalFilter;
-import com.parse.LogInCallback;
-import com.parse.ParseAnalytics;
-import com.parse.ParseException;
-import com.parse.ParseUser;
-import com.parse.SignUpCallback;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.FirebaseDatabase;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -39,11 +39,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public static final int DRIVER = 0;
     public static final int RIDER = 1;
 
+    FirebaseAuth mAuth;
+    FirebaseDatabase mDataBase;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        ParseAnalytics.trackAppOpenedInBackground(getIntent());
+        //ParseAnalytics.trackAppOpenedInBackground(getIntent());
 
         mLoginButton = findViewById(R.id.login_button);
         mLoginButton.setOnClickListener(this);
@@ -52,10 +55,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mUsernameEditText = findViewById(R.id.username_edittext);
         mPasswordEditText = findViewById(R.id.password_edittext);
 
-        if (ParseUser.getCurrentUser() != null) {
+        mAuth = FirebaseAuth.getInstance();
+        if (mAuth.getCurrentUser() != null) {
             //Go to the other activity
-            int userType = (Boolean) ParseUser.getCurrentUser().get("driver")? DRIVER : RIDER;
-            moveToMap(userType);
+            /*int userType = (Boolean) mAuth.getCurrentUser().g.get("driver")? DRIVER : RIDER;
+            moveToMap(userType);*/
         }
     }
 
@@ -113,15 +117,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void doLogin() {
-        ParseUser.logInInBackground(
-                mUsernameEditText.getText().toString(),
-                mPasswordEditText.getText().toString(),
-                new LogInCallback() {
+        mAuth.signInWithEmailAndPassword(mUsernameEditText.getText().toString(), mPasswordEditText.getText().toString())
+                .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
                     @Override
-                    public void done(ParseUser user, ParseException e) {
-                        if (e == null) {
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.isSuccessful()) {
                             //Login Ok
-                            moveToMap(user.getInt("driver"));
+                            //moveToMap(user.getInt("driver"));
                         } else {
                             Toast.makeText(MainActivity.this, "Login error:", Toast.LENGTH_SHORT).show();
                         }
@@ -130,19 +132,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void doSignUp(@UserType final int user) {
-        ParseUser currentUser = new ParseUser();
-        currentUser.setUsername(mUsernameEditText.getText().toString());
-        currentUser.setPassword(mPasswordEditText.getText().toString());
-        currentUser.put("driver", user == DRIVER);
-        currentUser.signUpInBackground(new SignUpCallback() {
-            @Override
-            public void done(ParseException e) {
-                if (e == null) {
-                    //Sign up completed
-                    moveToMap(user);
-                }
-            }
-        });
+        mAuth.createUserWithEmailAndPassword(mUsernameEditText.getText().toString(), mPasswordEditText.getText().toString())
+                .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.getResult() != null && task.isSuccessful()) {
+                            //User created, we need to update the usertable
+                            //moveToMap(RIDER);
+                        } else {
+                            Toast.makeText(MainActivity.this, "Error creating new user", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
     }
 
     private void moveToMap(@UserType int userType) {

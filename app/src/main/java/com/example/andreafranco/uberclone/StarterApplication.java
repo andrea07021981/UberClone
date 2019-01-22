@@ -2,16 +2,13 @@ package com.example.andreafranco.uberclone;
 
 import android.app.Application;
 
-import com.parse.Parse;
-import com.parse.ParseACL;
-
 public class StarterApplication extends Application {
 
     @Override
     public void onCreate() {
         super.onCreate();
 
-        // Enable Local Datastore.
+        /*// Enable Local Datastore.
         Parse.enableLocalDatastore(this);
 
 
@@ -24,15 +21,15 @@ public class StarterApplication extends Application {
         );
 
 
-        /**
+        *//**
          * THIS IS USED FOR APPS THAT DON'T REQUIRE A LOGIN PAGE. WITH IT EVERY APP CAN LOGIN AUTOMATICALLY
-         */
+         *//*
         //ParseUser.enableAutomaticUser();
 
         ParseACL defaultACL = new ParseACL();
         defaultACL.setPublicReadAccess(true);
         defaultACL.setPublicWriteAccess(true);
-        ParseACL.setDefaultACL(defaultACL, true);
+        ParseACL.setDefaultACL(defaultACL, true);*/
 
     }
 }

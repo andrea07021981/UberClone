@@ -27,13 +27,6 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.parse.FindCallback;
-import com.parse.ParseException;
-import com.parse.ParseGeoPoint;
-import com.parse.ParseObject;
-import com.parse.ParseQuery;
-import com.parse.ParseUser;
-import com.parse.SaveCallback;
 
 import java.util.List;
 
@@ -114,7 +107,7 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
     }
 
     private void updateRiderStatus() {
-        ParseQuery<ParseObject> requestQuery = new ParseQuery<ParseObject>("request");
+        /*ParseQuery<ParseObject> requestQuery = new ParseQuery<ParseObject>("request");
         requestQuery.whereEqualTo("rider", ParseUser.getCurrentUser().getUsername());
         requestQuery.findInBackground(new FindCallback<ParseObject>() {
             @Override
@@ -129,7 +122,7 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
                     }
                 }
             }
-        });
+        });*/
     }
 
     // TODO: Rename method, update argument and hook method into UI event
@@ -167,7 +160,7 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
     }
 
     public void callDriverClick(View view) {
-        if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        /*if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_CODE);
         } else {
             if (mRequestActive) {
@@ -207,7 +200,7 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
                     Toast.makeText(getActivity(), "Couldn't find location. Try again", Toast.LENGTH_SHORT).show();
                 }
             }
-        }
+        }*/
     }
 
     private void setUpLocationManager() {

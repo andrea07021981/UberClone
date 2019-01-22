@@ -32,12 +32,6 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.parse.FindCallback;
-import com.parse.ParseException;
-import com.parse.ParseGeoPoint;
-import com.parse.ParseObject;
-import com.parse.ParseQuery;
-import com.parse.ParseUser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -103,7 +97,7 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback, Goog
 
     private void updateRequests(final Location userLocation) {
         Location lastKnownPosition = getLastKnownPosition();
-        ParseQuery<ParseObject> requestQuery = new ParseQuery<ParseObject>("request");
+        /*ParseQuery<ParseObject> requestQuery = new ParseQuery<ParseObject>("request");
         requestQuery.whereNotEqualTo("rider", ParseUser.getCurrentUser().getUsername());
         requestQuery.whereNear("location", new ParseGeoPoint(lastKnownPosition.getLatitude(), lastKnownPosition.getLongitude()));
         requestQuery.findInBackground(new FindCallback<ParseObject>() {
@@ -150,7 +144,7 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback, Goog
                     }
                 }
             }
-        });
+        });*/
     }
 
     public void onButtonPressed(Uri uri) {
