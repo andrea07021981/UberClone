@@ -2,8 +2,10 @@ package com.example.andreafranco.uberclone;
 
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.os.Build;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -19,13 +21,21 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
+    private static final int INTENT_CODE_SIGNUP = 1;
     private Button mLoginButton;
     private TextView mSignUpTextView;
     private EditText mUsernameEditText, mPasswordEditText;
@@ -36,8 +46,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     // Create an interface for validating int types
     public @interface UserType {}
     // Declare the constants
-    public static final int DRIVER = 0;
+    public static final int NONE = 0;
     public static final int RIDER = 1;
+    public static final int DRIVER = 2;
 
     FirebaseAuth mAuth;
     FirebaseDatabase mDataBase;
@@ -55,9 +66,43 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mUsernameEditText = findViewById(R.id.username_edittext);
         mPasswordEditText = findViewById(R.id.password_edittext);
 
+        mDataBase = FirebaseDatabase.getInstance();
         mAuth = FirebaseAuth.getInstance();
         if (mAuth.getCurrentUser() != null) {
-            //Go to the other activity
+            //Retrieve user type and move to the other activity
+            //TODO Move the type saved to the map activity amd save a user instance after the login in order to avoid multiple queries
+            mDataBase.getReference("users")
+                    .child(mAuth.getCurrentUser().getUid())
+                    .addChildEventListener(new ChildEventListener() {
+                        @Override
+                        public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+                            if (dataSnapshot.exists() && dataSnapshot.getKey().equals("usertype")) {
+                                int usertype = Math.toIntExact((Long) dataSnapshot.getValue());
+                                moveToMap(usertype);
+                                int i = 1;
+                            }
+                        }
+
+                        @Override
+                        public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+                        }
+
+                        @Override
+                        public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
+
+                        }
+
+                        @Override
+                        public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                        }
+                    });
             /*int userType = (Boolean) mAuth.getCurrentUser().g.get("driver")? DRIVER : RIDER;
             moveToMap(userType);*/
         }
@@ -66,7 +111,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View view) {
         InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-        if (inputMethodManager.isActive()) inputMethodManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+        assert inputMethodManager != null;
+        if (inputMethodManager.isActive()) inputMethodManager.hideSoftInputFromWindow(Objects.requireNonNull(getCurrentFocus()).getWindowToken(), 0);
         int id = view.getId();
         switch (id) {
 
@@ -80,35 +126,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
 
             case R.id.signup_textview:
-                if (TextUtils.isEmpty(mUsernameEditText.getText()) ||
-                        TextUtils.isEmpty(mPasswordEditText.getText())) {
-                    Toast.makeText(this, "Username and password required", Toast.LENGTH_SHORT).show();
-                } else {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(this)
-                            .setCancelable(false)
-                            .setPositiveButton("Rider", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialogInterface, int i) {
-                                    doSignUp(RIDER);
-                                }
-                            })
-                            .setNeutralButton("Cancel", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialogInterface, int i) {
-                                    dialogInterface.cancel();
-                                }
-                            })
-                            .setNegativeButton("Driver", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialogInterface, int i) {
-                                    doSignUp(DRIVER);
-                                }
-                            })
-                            .setTitle("User type")
-                            .setMessage("Select which type of user");
-                    AlertDialog alertDialog = builder.create();
-                    alertDialog.show();
-                }
+                doSignUp();
                 break;
 
             default:
@@ -131,19 +149,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 });
     }
 
-    private void doSignUp(@UserType final int user) {
-        mAuth.createUserWithEmailAndPassword(mUsernameEditText.getText().toString(), mPasswordEditText.getText().toString())
-                .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (task.getResult() != null && task.isSuccessful()) {
-                            //User created, we need to update the usertable
-                            //moveToMap(RIDER);
-                        } else {
-                            Toast.makeText(MainActivity.this, "Error creating new user", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                });
+    private void doSignUp() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            // Apply activity transition
+            Intent intent = new Intent(this, SignUpActivity.class);
+            startActivityForResult(intent, INTENT_CODE_SIGNUP);
+        } else {
+            // Swap without transition
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        if (requestCode == INTENT_CODE_SIGNUP && resultCode == RESULT_OK && data != null) {
+            moveToMap(data.getIntExtra("userType", NONE));
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     private void moveToMap(@UserType int userType) {

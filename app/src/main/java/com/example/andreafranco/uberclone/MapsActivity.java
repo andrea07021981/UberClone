@@ -9,14 +9,18 @@ import android.widget.Toast;
 
 import com.example.andreafranco.uberclone.fragments.DriverFragment;
 import com.example.andreafranco.uberclone.fragments.RiderFragment;
+import com.google.firebase.auth.FirebaseAuth;
 
 public class MapsActivity extends FragmentActivity implements RiderFragment.OnFragmentInteractionListener {
+
+    FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
 
+        mAuth = FirebaseAuth.getInstance();
         if (findViewById(R.id.fragment_container) != null) {
             // However, if we're being restored from a previous state,
             // then we don't need to do anything and should return or else
@@ -74,6 +78,8 @@ public class MapsActivity extends FragmentActivity implements RiderFragment.OnFr
     }
 
     private void logOut() {
+        mAuth.signOut();
+        finish();
         /*ParseUser.logOutInBackground(new LogOutCallback() {
             @Override
             public void done(ParseException e) {
