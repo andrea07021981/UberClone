@@ -1,21 +1,21 @@
 package com.example.andreafranco.uberclone;
 
 import android.Manifest;
-import android.content.Context;
+import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Patterns;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
@@ -23,24 +23,22 @@ import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.Toast;
 
+import com.example.andreafranco.uberclone.models.LoggedUser;
 import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 public class SignUpActivity extends AppCompatActivity {
 
@@ -51,6 +49,12 @@ public class SignUpActivity extends AppCompatActivity {
     private EditText mNameEditText, mSurnameEditText, mEmailEditText, mPasswordEditText, mConfirmPasswordEditText;
     private Spinner mUserTypeSpinner;
     private Uri mProfileUri;
+    @SuppressWarnings("deprecation")
+    private ProgressDialog mProgressDialog;
+    private AlertDialog mAlertDialog;
+
+    private FirebaseAuth mAuth;
+    private DatabaseReference mUsersDatabaseReference;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,6 +71,22 @@ public class SignUpActivity extends AppCompatActivity {
         mPasswordEditText = findViewById(R.id.password_edittext);
         mConfirmPasswordEditText = findViewById(R.id.confirm_password_editetext);
         mUserTypeSpinner = findViewById(R.id.usertype_spinner);
+        mProgressDialog = new ProgressDialog(this);
+
+        mAuth = FirebaseAuth.getInstance();
+        mUsersDatabaseReference = FirebaseDatabase.getInstance().getReference().child("users");
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setView(LayoutInflater.from(this).inflate(R.layout.progress_dialog, null));
+        mAlertDialog = builder.create();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (mAlertDialog.isShowing()) {
+            mAlertDialog.dismiss();
+        }
     }
 
     @Override
@@ -77,8 +97,8 @@ public class SignUpActivity extends AppCompatActivity {
     }
 
     public void signUpClick(View view) {
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
         if (checkMandatoryField()) {
+            mAlertDialog.show();
             mAuth.createUserWithEmailAndPassword(mEmailEditText.getText().toString(), mPasswordEditText.getText().toString())
                     .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
 
@@ -89,16 +109,16 @@ public class SignUpActivity extends AppCompatActivity {
                                 final FirebaseUser user = task.getResult().getUser();
                                 final int userType = ((ArrayAdapter) mUserTypeSpinner.getAdapter()).getPosition(mUserTypeSpinner.getSelectedItem());
 
-                                Map<String, Object> userMap = new HashMap<>();
-                                userMap.put("name", mNameEditText.getText().toString());
-                                userMap.put("surname", mSurnameEditText.getText().toString());
-                                userMap.put("usertype", userType);
-                                if (mProfileUri != null) userMap.put("profileimagepath", mProfileUri.toString());
+                                LoggedUser loggedUser = new LoggedUser(
+                                        mNameEditText.getText().toString(),
+                                        mSurnameEditText.getText().toString(),
+                                        userType,
+                                        mProfileUri);
 
-                                FirebaseDatabase.getInstance().getReference()
-                                        .child("users")
+                                //Save record on user table
+                                mUsersDatabaseReference
                                         .child(user.getUid())
-                                        .setValue(userMap)
+                                        .setValue(loggedUser)
                                         .addOnCompleteListener(new OnCompleteListener<Void>() {
                                             @Override
                                             public void onComplete(@NonNull Task<Void> task) {
@@ -122,7 +142,7 @@ public class SignUpActivity extends AppCompatActivity {
                                                             });
                                                 }
                                             }
-                                        });
+                                });
                             }
                         }
                     });

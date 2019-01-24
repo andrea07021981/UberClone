@@ -1,15 +1,15 @@
 package com.example.andreafranco.uberclone;
 
-import android.content.DialogInterface;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Build;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
@@ -17,10 +17,13 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.andreafranco.uberclone.models.LoggedUser;
+import com.firebase.ui.auth.AuthUI;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -29,35 +32,42 @@ import com.google.firebase.database.FirebaseDatabase;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private static final int INTENT_CODE_SIGNUP = 1;
+    private static final int RC_SIGN_IN = 2;
+
     private Button mLoginButton;
     private TextView mSignUpTextView;
     private EditText mUsernameEditText, mPasswordEditText;
+    private FirebaseAuth.AuthStateListener mAuthStateListener;
+    private AlertDialog mAlertDialog;
 
     @Retention(RetentionPolicy.SOURCE)
     // Enumerate valid values for this interface
     @IntDef({DRIVER, RIDER})
     // Create an interface for validating int types
     public @interface UserType {}
+
+
     // Declare the constants
     public static final int NONE = 0;
     public static final int RIDER = 1;
     public static final int DRIVER = 2;
 
-    FirebaseAuth mAuth;
-    FirebaseDatabase mDataBase;
+    private FirebaseAuth mFirebaseAuth;
+    private FirebaseDatabase mDataBase;
+    private DatabaseReference mUsersDatabaseReference;
+    private ChildEventListener mChildEventListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        //ParseAnalytics.trackAppOpenedInBackground(getIntent());
 
         mLoginButton = findViewById(R.id.login_button);
         mLoginButton.setOnClickListener(this);
@@ -66,45 +76,123 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mUsernameEditText = findViewById(R.id.username_edittext);
         mPasswordEditText = findViewById(R.id.password_edittext);
 
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setView(LayoutInflater.from(this).inflate(R.layout.progress_dialog, null));
+        mAlertDialog = builder.create();
+
+        //Database
         mDataBase = FirebaseDatabase.getInstance();
-        mAuth = FirebaseAuth.getInstance();
-        if (mAuth.getCurrentUser() != null) {
-            //Retrieve user type and move to the other activity
-            //TODO Move the type saved to the map activity amd save a user instance after the login in order to avoid multiple queries
-            mDataBase.getReference("users")
-                    .child(mAuth.getCurrentUser().getUid())
-                    .addChildEventListener(new ChildEventListener() {
-                        @Override
-                        public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
-                            if (dataSnapshot.exists() && dataSnapshot.getKey().equals("usertype")) {
-                                int usertype = Math.toIntExact((Long) dataSnapshot.getValue());
-                                moveToMap(usertype);
-                                int i = 1;
-                            }
-                        }
+        mUsersDatabaseReference = mDataBase.getReference().child("users");
 
-                        @Override
-                        public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+        //Authentication
+        mFirebaseAuth = FirebaseAuth.getInstance();
+        mAuthStateListener = new FirebaseAuth.AuthStateListener() {
 
-                        }
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                FirebaseUser currentUser = firebaseAuth.getCurrentUser();
 
-                        @Override
-                        public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
+                //I use the attach listener either the user is already logged or when the user click on login
+                //User is already logged in
+                if (currentUser != null) {
+                    mAlertDialog.show();
+                    onSignedInInitialize(currentUser);
+                } else {
+                    //No logged user
+                    onSignedOutCleanUp();
+                    //Simple example of using FirebaseUI if we want to use google, facebook etc
+                    //In this case we have a custom sign up UI
+                    /*List<AuthUI.IdpConfig> providers = Arrays.asList(
+                            new AuthUI.IdpConfig.EmailBuilder().build(),
+                            new AuthUI.IdpConfig.GoogleBuilder().build());
+                    startActivityForResult(AuthUI.getInstance()
+                            .createSignInIntentBuilder()
+                            .setIsSmartLockEnabled(false)
+                            .setLogo(R.drawable.uber)
+                            .setAvailableProviders(providers)
+                            .build(),
+                    RC_SIGN_IN);*/
+                }
 
-                        }
+            }
+        };
+    }
 
-                        @Override
-                        public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+    private void onSignedOutCleanUp() {
+        detachDatabaseReadListener();
+    }
 
-                        }
+    private void onSignedInInitialize(@NonNull FirebaseUser currentUser) {
+        attachDatabaseReadListener();
+    }
 
-                        @Override
-                        public void onCancelled(@NonNull DatabaseError databaseError) {
+    private void attachDatabaseReadListener() {
+        if (mChildEventListener == null) {
+            mChildEventListener = new ChildEventListener() {
 
-                        }
-                    });
-            /*int userType = (Boolean) mAuth.getCurrentUser().g.get("driver")? DRIVER : RIDER;
-            moveToMap(userType);*/
+                @Override
+                public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+                    LoggedUser user = dataSnapshot.getValue(LoggedUser.class);
+                    if (dataSnapshot.getKey().equals(mFirebaseAuth.getUid())) {
+                        moveToMap(user.getUserType());
+                    }
+                }
+
+                @Override
+                public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+                }
+
+                @Override
+                public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
+
+                }
+
+                @Override
+                public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+            };
+            mUsersDatabaseReference.addChildEventListener(mChildEventListener);
+        }
+    }
+
+    private void detachDatabaseReadListener() {
+        if (mChildEventListener != null) {
+            mUsersDatabaseReference.removeEventListener(mChildEventListener);
+            mChildEventListener = null;
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (mAuthStateListener != null) {
+            mFirebaseAuth.addAuthStateListener(mAuthStateListener);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mAuthStateListener != null) {
+            mFirebaseAuth.removeAuthStateListener(mAuthStateListener);
+            mAuthStateListener = null;
+        }
+        detachDatabaseReadListener();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (mAlertDialog.isShowing()) {
+            mAlertDialog.dismiss();
         }
     }
 
@@ -135,13 +223,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void doLogin() {
-        mAuth.signInWithEmailAndPassword(mUsernameEditText.getText().toString(), mPasswordEditText.getText().toString())
+        mAlertDialog.show();
+        mFirebaseAuth.signInWithEmailAndPassword(mUsernameEditText.getText().toString(), mPasswordEditText.getText().toString())
                 .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         if (task.isSuccessful()) {
                             //Login Ok
-                            //moveToMap(user.getInt("driver"));
+                            attachDatabaseReadListener();
+                            mUsersDatabaseReference
+                                    .child(task.getResult().getUser().getUid());
                         } else {
                             Toast.makeText(MainActivity.this, "Login error:", Toast.LENGTH_SHORT).show();
                         }
@@ -155,7 +246,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             Intent intent = new Intent(this, SignUpActivity.class);
             startActivityForResult(intent, INTENT_CODE_SIGNUP);
         } else {
-            // Swap without transition
+            // TODO Swap without transition
         }
     }
 
