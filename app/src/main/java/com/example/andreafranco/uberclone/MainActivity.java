@@ -3,6 +3,7 @@ package com.example.andreafranco.uberclone;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Build;
+import android.os.Parcelable;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -44,9 +45,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Button mLoginButton;
     private TextView mSignUpTextView;
     private EditText mUsernameEditText, mPasswordEditText;
-    private FirebaseAuth.AuthStateListener mAuthStateListener;
     private AlertDialog mAlertDialog;
-
     @Retention(RetentionPolicy.SOURCE)
     // Enumerate valid values for this interface
     @IntDef({DRIVER, RIDER})
@@ -54,11 +53,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public @interface UserType {}
 
 
+
     // Declare the constants
     public static final int NONE = 0;
     public static final int RIDER = 1;
     public static final int DRIVER = 2;
 
+    private FirebaseAuth.AuthStateListener mAuthStateListener;
     private FirebaseAuth mFirebaseAuth;
     private FirebaseDatabase mDataBase;
     private DatabaseReference mUsersDatabaseReference;
@@ -134,7 +135,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
                     LoggedUser user = dataSnapshot.getValue(LoggedUser.class);
                     if (dataSnapshot.getKey().equals(mFirebaseAuth.getUid())) {
-                        moveToMap(user.getUserType());
+                        moveToMap(user);
                     }
                 }
 
@@ -253,14 +254,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         if (requestCode == INTENT_CODE_SIGNUP && resultCode == RESULT_OK && data != null) {
-            moveToMap(data.getIntExtra("userType", NONE));
+            moveToMap(data.getParcelableExtra("user"));
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
 
-    private void moveToMap(@UserType int userType) {
+    private void moveToMap(Parcelable user) {
         Intent intent = new Intent(this, MapsActivity.class);
-        intent.putExtra("driver", userType);
+        intent.putExtra("user", user);
         startActivity(intent);
     }
 }

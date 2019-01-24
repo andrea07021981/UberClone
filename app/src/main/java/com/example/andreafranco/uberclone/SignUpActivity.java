@@ -109,11 +109,11 @@ public class SignUpActivity extends AppCompatActivity {
                                 final FirebaseUser user = task.getResult().getUser();
                                 final int userType = ((ArrayAdapter) mUserTypeSpinner.getAdapter()).getPosition(mUserTypeSpinner.getSelectedItem());
 
-                                LoggedUser loggedUser = new LoggedUser(
+                                final LoggedUser loggedUser = new LoggedUser(
                                         mNameEditText.getText().toString(),
                                         mSurnameEditText.getText().toString(),
                                         userType,
-                                        mProfileUri);
+                                        mProfileUri.toString());
 
                                 //Save record on user table
                                 mUsersDatabaseReference
@@ -134,7 +134,7 @@ public class SignUpActivity extends AppCompatActivity {
                                                                     if (task.isSuccessful()) {
                                                                         //Go back
                                                                         Intent intent = new Intent();
-                                                                        intent.putExtra("userType", userType);
+                                                                        intent.putExtra("user", loggedUser);
                                                                         setResult(RESULT_OK, intent);
                                                                         finish();
                                                                     }

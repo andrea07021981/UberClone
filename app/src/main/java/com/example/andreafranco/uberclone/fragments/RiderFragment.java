@@ -17,18 +17,21 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
 
-import com.example.andreafranco.uberclone.MainActivity;
 import com.example.andreafranco.uberclone.R;
+import com.example.andreafranco.uberclone.models.LoggedUser;
+import com.example.andreafranco.uberclone.models.Request;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
-
-import java.util.List;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 import static android.content.Context.LOCATION_SERVICE;
 
@@ -50,12 +53,17 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
     private LocationListener mLocationListener;
     private FloatingActionButton mDriverFab;
 
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
+    // the fragment initialization parameters
+    private static final String ARG_PARAM = "arg_param";
 
     private OnFragmentInteractionListener mListener;
     private boolean mRequestActive;
+
+    private DatabaseReference mRequestsDatabaseReference;
+    private FirebaseDatabase mDataBase;
+    //TODO we'll use it for a reject of a driver
+    private ChildEventListener mChildEventListener;
+    private LoggedUser mParam;
 
     public RiderFragment() {
         // Required empty public constructor
@@ -67,9 +75,10 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
      *
      * @return A new instance of fragment RiderFragment.
      */
-    public static RiderFragment newInstance() {
+    public static RiderFragment newInstance(LoggedUser user) {
         RiderFragment fragment = new RiderFragment();
         Bundle args = new Bundle();
+        args.putParcelable(ARG_PARAM, user);
         fragment.setArguments(args);
         return fragment;
     }
@@ -77,6 +86,11 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (getArguments() != null) {
+
+            //TODO it's not enough. We have to decide whether we can user the userauth instead of passing logged user into params
+            mParam = getArguments().getParcelable(ARG_PARAM);
+        }
     }
 
     @Override
@@ -141,6 +155,9 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
             throw new RuntimeException(context.toString()
                     + " must implement OnFragmentInteractionListener");
         }
+        //Prepare Database
+        mDataBase = FirebaseDatabase.getInstance();
+        mRequestsDatabaseReference = mDataBase.getReference().child("requests");
     }
 
     @Override
@@ -149,7 +166,7 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
-                    Location lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                    Location lastKnownLocation = getLastKnownPosition();
                     if (lastKnownLocation != null) {
                         updateMap(lastKnownLocation);
                     }
@@ -160,6 +177,35 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
     }
 
     public void callDriverClick(View view) {
+
+        if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_CODE);
+        } else {
+            if (mRequestActive) {
+
+            } else {
+                Location lastKnownLocation = getLastKnownPosition();
+                String requestUuid = mRequestsDatabaseReference.push().getKey();
+                Request request = new Request(
+                        true,
+                        "",
+                        "riderUUID",
+                        lastKnownLocation.getLatitude(),
+                        lastKnownLocation.getLongitude());
+                mRequestsDatabaseReference
+                        .child(requestUuid)
+                        .setValue(request)
+                        .addOnCompleteListener(new OnCompleteListener<Void>() {
+                            @Override
+                            public void onComplete(@NonNull Task<Void> task) {
+                                if (task.getResult() != null && task.isSuccessful()) {
+                                    //TODO update UI
+                                }
+                            }
+                        });
+            }
+        }
+
         /*if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_CODE);
         } else {
@@ -203,6 +249,14 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
         }*/
     }
 
+    private Location getLastKnownPosition() {
+        Location lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        if (lastKnownLocation == null) {
+            lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        }
+        return lastKnownLocation;
+    }
+
     private void setUpLocationManager() {
         mLocationListener = new LocationListener() {
             @Override
@@ -233,7 +287,7 @@ public class RiderFragment extends Fragment implements OnMapReadyCallback {
                 requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_CODE);
             } else {
                 mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
-                Location lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                Location lastKnownLocation = getLastKnownPosition();
                 if (lastKnownLocation != null) {
                     updateMap(lastKnownLocation);
                 }

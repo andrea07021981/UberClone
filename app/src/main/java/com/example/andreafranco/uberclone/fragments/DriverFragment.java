@@ -22,19 +22,17 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.example.andreafranco.uberclone.R;
-import com.google.android.gms.maps.CameraUpdate;
-import com.google.android.gms.maps.CameraUpdateFactory;
+import com.example.andreafranco.uberclone.models.LoggedUser;
+import com.example.andreafranco.uberclone.models.Request;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
-import com.google.android.gms.maps.model.MarkerOptions;
-
-import java.util.ArrayList;
-import java.util.List;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 import static android.content.Context.LOCATION_SERVICE;
 
@@ -55,11 +53,15 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback, Goog
     private LocationListener mLocationListener;
     private FloatingActionButton mDriverFab;
 
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
+    // the fragment initialization parameters
+    private static final String ARG_PARAM = "arg_param";
+    private LoggedUser mParam;
 
     private RiderFragment.OnFragmentInteractionListener mListener;
+
+    private DatabaseReference mRequestsDatabaseReference;
+    private FirebaseDatabase mDataBase;
+    private ChildEventListener mChildEventListener;
 
     public DriverFragment() {
         // Required empty public constructor
@@ -70,10 +72,12 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback, Goog
      * this fragment using the provided parameters.
      *
      * @return A new instance of fragment DriverFragment.
+     * @param user
      */
-    public static DriverFragment newInstance() {
+    public static DriverFragment newInstance(LoggedUser user) {
         DriverFragment fragment = new DriverFragment();
         Bundle args = new Bundle();
+        args.putParcelable(ARG_PARAM, user);
         fragment.setArguments(args);
         return fragment;
     }
@@ -81,6 +85,9 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback, Goog
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (getArguments() != null) {
+            mParam = getArguments().getParcelable(ARG_PARAM);
+        }
     }
 
     @Override
@@ -96,7 +103,8 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback, Goog
     }
 
     private void updateRequests(final Location userLocation) {
-        Location lastKnownPosition = getLastKnownPosition();
+        attachDatabaseReadListener();
+
         /*ParseQuery<ParseObject> requestQuery = new ParseQuery<ParseObject>("request");
         requestQuery.whereNotEqualTo("rider", ParseUser.getCurrentUser().getUsername());
         requestQuery.whereNear("location", new ParseGeoPoint(lastKnownPosition.getLatitude(), lastKnownPosition.getLongitude()));
@@ -156,18 +164,63 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback, Goog
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        mLocationManager = (LocationManager) getActivity().getSystemService(LOCATION_SERVICE);
     }
 
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
+        mLocationManager = (LocationManager) getActivity().getSystemService(LOCATION_SERVICE);
+        //Prepare Database
+        mDataBase = FirebaseDatabase.getInstance();
+        mRequestsDatabaseReference = mDataBase.getReference().child("requests");
     }
 
     @Override
     public void onDetach() {
         super.onDetach();
         mListener = null;
+        detachDatabaseReadListener();
+    }
+
+    private void attachDatabaseReadListener() {
+        if (mChildEventListener == null) {
+            mChildEventListener = new ChildEventListener() {
+
+                @Override
+                public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+                    Request request = dataSnapshot.getValue(Request.class);
+                    //TODO check if marker already exist, otherwise add it
+                }
+
+                @Override
+                public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+                    //TODO check if marker already exist, otherwise add it
+                }
+
+                @Override
+                public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
+                    //TODO check if marker already exist, otherwise add it
+                }
+
+                @Override
+                public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+
+                }
+            };
+            mRequestsDatabaseReference.addChildEventListener(mChildEventListener);
+        }
+    }
+
+    private void detachDatabaseReadListener() {
+        if (mChildEventListener != null) {
+            mRequestsDatabaseReference.removeEventListener(mChildEventListener);
+            mChildEventListener = null;
+        }
     }
 
     @Override
