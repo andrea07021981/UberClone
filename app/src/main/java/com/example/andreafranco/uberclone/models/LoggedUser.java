@@ -16,6 +16,7 @@ public class LoggedUser implements Parcelable {
         }
     };
 
+    private String uuid;
     private String name;
     private String surname;
     private int userType;
@@ -25,11 +26,20 @@ public class LoggedUser implements Parcelable {
 
     }
 
-    public LoggedUser(String name, String surname, int userType, String profileUri) {
+    public LoggedUser(String uuid, String name, String surname, int userType, String profileUri) {
+        this.uuid = uuid;
         this.name = name;
         this.surname = surname;
         this.userType = userType;
         this.profileUri = profileUri;
+    }
+
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
     }
 
     public String getName() {
@@ -67,6 +77,7 @@ public class LoggedUser implements Parcelable {
     // Parcelling part
     public LoggedUser(Parcel in){
         this.name = in.readString();
+        this.uuid = in.readString();
         this.surname = in.readString();
         this.userType = in.readInt();
         this.profileUri = in.readString();
@@ -79,6 +90,7 @@ public class LoggedUser implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(this.uuid);
         dest.writeString(this.name);
         dest.writeString(this.surname);
         dest.writeInt(this.userType);

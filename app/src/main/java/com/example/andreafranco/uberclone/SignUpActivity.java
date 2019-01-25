@@ -110,6 +110,7 @@ public class SignUpActivity extends AppCompatActivity {
                                 final int userType = ((ArrayAdapter) mUserTypeSpinner.getAdapter()).getPosition(mUserTypeSpinner.getSelectedItem());
 
                                 final LoggedUser loggedUser = new LoggedUser(
+                                        user.getUid(),
                                         mNameEditText.getText().toString(),
                                         mSurnameEditText.getText().toString(),
                                         userType,

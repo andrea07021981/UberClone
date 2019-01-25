@@ -21,49 +21,69 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.example.andreafranco.uberclone.BuildConfig;
 import com.example.andreafranco.uberclone.R;
 import com.example.andreafranco.uberclone.models.LoggedUser;
 import com.example.andreafranco.uberclone.models.Request;
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
+import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static android.content.Context.LOCATION_SERVICE;
 
 /**
  * A simple {@link Fragment} subclass.
  * Activities that contain this fragment must implement the
- * {@link DriverFragment.OnFragmentInteractionListener} interface
+ * {@link MapFragment.OnFragmentInteractionListener} interface
  * to handle interaction events.
- * Use the {@link DriverFragment#newInstance} factory method to
+ * Use the {@link MapFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class DriverFragment extends Fragment implements OnMapReadyCallback, GoogleMap.OnInfoWindowClickListener {
+public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleMap.OnInfoWindowClickListener {
     private static final int PERMISSION_CODE = 0;
-    private static final float ZOOM_LEVEL = 15;
+    private static final float DEFAULT_ZOOM_LEVEL = 15;
+    private static final String CONFIG_ZOOM_LEVEL_KEY = "config_zoom_level_key";
 
     private GoogleMap mMap;
     private LocationManager mLocationManager;
     private LocationListener mLocationListener;
     private FloatingActionButton mDriverFab;
 
+    private HashMap<String, Marker> mMarkersHash;
+
     // the fragment initialization parameters
     private static final String ARG_PARAM = "arg_param";
-    private LoggedUser mParam;
 
-    private RiderFragment.OnFragmentInteractionListener mListener;
+    private LoggedUser mCurrentUser;
+    private float mZoomLevel;
+    private Marker mUserPositionMarker;
 
+    //Firebase Variables
+    private MapFragment.OnFragmentInteractionListener mListener;
     private DatabaseReference mRequestsDatabaseReference;
     private FirebaseDatabase mDataBase;
     private ChildEventListener mChildEventListener;
+    private FirebaseRemoteConfig mFirebaseRemoteConfig;
 
-    public DriverFragment() {
+    public MapFragment() {
         // Required empty public constructor
     }
 
@@ -71,11 +91,11 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback, Goog
      * Use this factory method to create a new instance of
      * this fragment using the provided parameters.
      *
-     * @return A new instance of fragment DriverFragment.
+     * @return A new instance of fragment MapFragment.
      * @param user
      */
-    public static DriverFragment newInstance(LoggedUser user) {
-        DriverFragment fragment = new DriverFragment();
+    public static MapFragment newInstance(LoggedUser user) {
+        MapFragment fragment = new MapFragment();
         Bundle args = new Bundle();
         args.putParcelable(ARG_PARAM, user);
         fragment.setArguments(args);
@@ -86,7 +106,7 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback, Goog
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            mParam = getArguments().getParcelable(ARG_PARAM);
+            mCurrentUser = getArguments().getParcelable(ARG_PARAM);
         }
     }
 
@@ -99,6 +119,7 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback, Goog
         SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
+        mMarkersHash = new HashMap<>();
         return view;
     }
 
@@ -173,6 +194,7 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback, Goog
         //Prepare Database
         mDataBase = FirebaseDatabase.getInstance();
         mRequestsDatabaseReference = mDataBase.getReference().child("requests");
+        activateFirebaseComponents();
     }
 
     @Override
@@ -189,7 +211,48 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback, Goog
                 @Override
                 public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
                     Request request = dataSnapshot.getValue(Request.class);
-                    //TODO check if marker already exist, otherwise add it
+
+                    //mMap.clear();
+                    LatLng userLocation = new LatLng(request.getLatitude(), request.getLongitude());
+                    String rider = request.getRiderUuid();
+
+                    MarkerOptions riderRequestMarker = new MarkerOptions();
+                    riderRequestMarker.position(userLocation);
+                    riderRequestMarker.title(rider);
+                    riderRequestMarker.anchor(0.5f, 0.5f);
+                    riderRequestMarker.icon(BitmapDescriptorFactory.fromResource(R.drawable.rider_marker));
+                    Marker marker = mMap.addMarker(riderRequestMarker);
+                    marker.setTag(dataSnapshot.getKey());
+                    mMarkersHash.put(dataSnapshot.getKey(),marker);
+                    CameraUpdate cu = CameraUpdateFactory.newLatLngZoom(marker.getPosition(), mZoomLevel);
+                    mMap.animateCamera(cu);
+
+                    /*//Add the current driver position
+                    MarkerOptions driverRequestMarker = new MarkerOptions();
+                    Location lastKnownPosition = getLastKnownPosition();
+                    LatLng driverLocation = new LatLng(lastKnownPosition.getLatitude(), lastKnownPosition.getLongitude());
+                    driverRequestMarker.position(driverLocation);
+                    driverRequestMarker.title(request.getDriverUuid());
+                    driverRequestMarker.anchor(0.5f, 0.5f);
+                    driverRequestMarker.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+                    Marker markerDriver = mMap.addMarker(driverRequestMarker);
+                    markerDriver.setTag("driver");
+                    if (!mMarkersHash.containsKey("driver")) {
+                        mMarkersHash.put("driver",marker);
+                    }
+
+                    LatLngBounds.Builder builder = new LatLngBounds.Builder();
+                    for (Object iterator : mMarkersHash.entrySet()) {
+                        Map.Entry pair = (Map.Entry) iterator;
+                        Marker markerValue = (Marker) pair.getValue();
+                        builder.include(markerValue.getPosition());
+                    }
+
+                    LatLngBounds bounds = builder.build();
+                    int padding = 10; // offset from edges of the map in pixels
+                    CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, padding);
+                    mMap.animateCamera(cu);*/
+
                 }
 
                 @Override
@@ -251,7 +314,22 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback, Goog
         mLocationListener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
-                updateMap(location);
+                if (mUserPositionMarker.getId() != null) {
+                    mUserPositionMarker.remove();
+                }
+                LatLng userLocation = new LatLng(location.getLatitude(), location.getLongitude());
+
+                MarkerOptions riderRequestMarker = new MarkerOptions();
+                riderRequestMarker.position(userLocation);
+                riderRequestMarker.title(mCurrentUser.getName());
+                riderRequestMarker.anchor(0.5f, 0.5f);
+                riderRequestMarker.icon(BitmapDescriptorFactory.fromResource(R.drawable.rider_marker));
+                mUserPositionMarker = mMap.addMarker(riderRequestMarker);
+                /*marker.setTag(mc);
+                mMarkersHash.put(dataSnapshot.getKey(),marker);*/
+                CameraUpdate cu = CameraUpdateFactory.newLatLngZoom(mUserPositionMarker.getPosition(), mZoomLevel);
+                mMap.animateCamera(cu);
+
             }
 
             @Override
@@ -283,6 +361,45 @@ public class DriverFragment extends Fragment implements OnMapReadyCallback, Goog
                 }
             }
         }
+    }
+
+    private void activateFirebaseComponents() {
+        mFirebaseRemoteConfig = FirebaseRemoteConfig.getInstance();
+        FirebaseRemoteConfigSettings configSettings = new FirebaseRemoteConfigSettings.Builder()
+                .setDeveloperModeEnabled(BuildConfig.DEBUG)
+                .build();
+        mFirebaseRemoteConfig.setConfigSettings(configSettings);
+        Map<String, Object> defaultConfigMap = new HashMap<>();
+        defaultConfigMap.put(CONFIG_ZOOM_LEVEL_KEY, DEFAULT_ZOOM_LEVEL);
+        mFirebaseRemoteConfig.setDefaults(defaultConfigMap);
+        fetchConfig();
+    }
+
+    private void fetchConfig() {
+        long cacheExpiration = 3600;
+        if (mFirebaseRemoteConfig.getInfo().getConfigSettings().isDeveloperModeEnabled()) {
+            cacheExpiration = 0;
+        }
+        //Add listeners
+        mFirebaseRemoteConfig.fetch(cacheExpiration)
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        mFirebaseRemoteConfig.activateFetched();
+                        applyRetrieveZoomLimit();
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+
+                    }
+                });
+    }
+
+    private void applyRetrieveZoomLimit() {
+        //TODO too late, change the behaviour
+        mZoomLevel = ((Double) mFirebaseRemoteConfig.getDouble(CONFIG_ZOOM_LEVEL_KEY)).floatValue();
     }
 
     /**

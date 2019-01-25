@@ -8,18 +8,18 @@ public class Request {
     private String driverUuid;
     private String riderUuid;
     private double latitude;
-    private double longitute;
+    private double longitude;
 
     private Request(){
 
     }
 
-    public Request(boolean requestActive, String driverUuid, String riderUuid, double latitude, double longitute) {
+    public Request(boolean requestActive, String driverUuid, String riderUuid, double latitude, double longitude) {
         this.driverUuid = driverUuid;
         this.requestActive = requestActive;
         this.riderUuid = riderUuid;
         this.latitude = latitude;
-        this.longitute = longitute;
+        this.longitude = longitude;
     }
 
     public String getDriverUuid() {
@@ -54,11 +54,11 @@ public class Request {
         this.latitude = latitude;
     }
 
-    public double getLongitute() {
-        return longitute;
+    public double getLongitude() {
+        return longitude;
     }
 
-    public void setLongitute(double longitute) {
-        this.longitute = longitute;
+    public void setLongitude(double longitude) {
+        this.longitude = longitude;
     }
 }

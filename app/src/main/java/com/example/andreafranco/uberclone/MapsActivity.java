@@ -6,14 +6,12 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.support.v4.app.FragmentActivity;
-import android.widget.Toast;
 
-import com.example.andreafranco.uberclone.fragments.DriverFragment;
-import com.example.andreafranco.uberclone.fragments.RiderFragment;
+import com.example.andreafranco.uberclone.fragments.MapFragment;
 import com.example.andreafranco.uberclone.models.LoggedUser;
 import com.google.firebase.auth.FirebaseAuth;
 
-public class MapsActivity extends FragmentActivity implements RiderFragment.OnFragmentInteractionListener {
+public class MapsActivity extends FragmentActivity implements MapFragment.OnFragmentInteractionListener {
 
     FirebaseAuth mAuth;
 
@@ -32,24 +30,16 @@ public class MapsActivity extends FragmentActivity implements RiderFragment.OnFr
             }
 
             //Check if rider or driver
+            //TODO create differents fragments for user type
             Parcelable parcellableUser = getIntent().getParcelableExtra("user");
             if (parcellableUser != null && parcellableUser instanceof LoggedUser) {
                 LoggedUser user = (LoggedUser) parcellableUser;
-                if (user.getUserType() == MainActivity.DRIVER) {
-                    DriverFragment fragment = DriverFragment.newInstance(user);
-                    fragment.setArguments(getIntent().getExtras());
+                MapFragment fragment = MapFragment.newInstance(user);
+                fragment.setArguments(getIntent().getExtras());
 
-                    // Add the fragment to the 'fragment_container' FrameLayout
-                    getSupportFragmentManager().beginTransaction()
-                            .add(R.id.fragment_container, fragment).commit();
-                } else {
-                    RiderFragment fragment = RiderFragment.newInstance(user);
-                    fragment.setArguments(getIntent().getExtras());
-
-                    // Add the fragment to the 'fragment_container' FrameLayout
-                    getSupportFragmentManager().beginTransaction()
-                            .add(R.id.fragment_container, fragment).commit();
-                }
+                // Add the fragment to the 'fragment_container' FrameLayout
+                getSupportFragmentManager().beginTransaction()
+                        .add(R.id.fragment_container, fragment).commit();
             }
         }
     }
