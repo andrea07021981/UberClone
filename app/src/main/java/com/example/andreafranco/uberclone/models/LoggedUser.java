@@ -3,8 +3,23 @@ package com.example.andreafranco.uberclone.models;
 import android.net.Uri;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.support.annotation.IntDef;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 public class LoggedUser implements Parcelable {
+
+    @Retention(RetentionPolicy.SOURCE)
+    // Enumerate valid values for this interface
+    @IntDef({DRIVER, RIDER})
+    // Create an interface for validating int types
+    public @interface UserType {}
+
+    // Declare the constants
+    public static final int NONE = 0;
+    public static final int RIDER = 1;
+    public static final int DRIVER = 2;
 
     public static final Parcelable.Creator CREATOR = new Parcelable.Creator() {
         public LoggedUser createFromParcel(Parcel in) {
@@ -26,7 +41,7 @@ public class LoggedUser implements Parcelable {
 
     }
 
-    public LoggedUser(String uuid, String name, String surname, int userType, String profileUri) {
+    public LoggedUser(String uuid, String name, String surname, @UserType int userType, String profileUri) {
         this.uuid = uuid;
         this.name = name;
         this.surname = surname;
@@ -58,11 +73,11 @@ public class LoggedUser implements Parcelable {
         this.surname = surname;
     }
 
-    public int getUserType() {
+    public @UserType int getUserType() {
         return userType;
     }
 
-    public void setUserType(int userType) {
+    public void setUserType(@UserType int userType) {
         this.userType = userType;
     }
 

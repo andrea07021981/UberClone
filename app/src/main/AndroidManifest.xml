@@ -9,8 +9,7 @@
     -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <application
         android:name=".StarterApplication"
@@ -20,7 +19,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppThemeNoActionBar">
-        <activity android:name=".MainActivity">
+        <activity android:name=".activities.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -40,14 +39,20 @@
             android:value="@string/google_maps_key" />
 
         <activity
-            android:name=".MapsActivity"
+            android:name=".activities.MapsActivity"
             android:label="@string/title_activity_maps"
             android:theme="@style/AppThemeNoActionBar" />
         <activity
-            android:name=".SignUpActivity"
-            android:theme="@style/AppTheme"
+            android:name=".activities.SignUpActivity"
             android:label="Sign Up"
-            android:launchMode="singleTask"></activity>
+            android:launchMode="singleTask"
+            android:theme="@style/AppTheme" />
+        <activity
+            android:name=".activities.SearchAddressActivity"
+            android:label="Search Address"
+            android:launchMode="singleTask"
+            android:theme="@style/AppTheme"
+            ></activity>
     </application>
 
 </manifest>

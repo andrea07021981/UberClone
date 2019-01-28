@@ -1,7 +1,9 @@
 package com.example.andreafranco.uberclone.fragments;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
@@ -18,11 +20,13 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.example.andreafranco.uberclone.BuildConfig;
 import com.example.andreafranco.uberclone.R;
+import com.example.andreafranco.uberclone.activities.SearchAddressActivity;
 import com.example.andreafranco.uberclone.models.LoggedUser;
 import com.example.andreafranco.uberclone.models.Request;
 import com.google.android.gms.maps.CameraUpdate;
@@ -110,14 +114,23 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
         }
     }
 
+    @SuppressLint("RestrictedApi")
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        View view = inflater.inflate(R.layout.fragment_driver, container, false);
+        View view = inflater.inflate(R.layout.fragment_map, container, false);
 
         SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        final EditText driverFab =view.findViewById(R.id.search_edittext);
+        driverFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mListener.onStartNewActivity(new Intent(getActivity(), SearchAddressActivity.class));
+            }
+        });
 
         mMarkersHash = new HashMap<>();
         return view;
@@ -125,55 +138,6 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
 
     private void updateRequests(final Location userLocation) {
         attachDatabaseReadListener();
-
-        /*ParseQuery<ParseObject> requestQuery = new ParseQuery<ParseObject>("request");
-        requestQuery.whereNotEqualTo("rider", ParseUser.getCurrentUser().getUsername());
-        requestQuery.whereNear("location", new ParseGeoPoint(lastKnownPosition.getLatitude(), lastKnownPosition.getLongitude()));
-        requestQuery.findInBackground(new FindCallback<ParseObject>() {
-            @Override
-            public void done(List<ParseObject> objects, ParseException e) {
-                if (e == null) {
-                    if (objects.size() > 0) {
-                        if (mMap != null) {
-                            List<Marker> markers = new ArrayList<>();
-                            mMap.clear();
-                            for (ParseObject object : objects) {
-                                ParseGeoPoint parseGeoPoint = (ParseGeoPoint) object.get("location");
-                                LatLng userLocation = new LatLng(parseGeoPoint.getLatitude(), parseGeoPoint.getLongitude());
-                                String rider = object.getString("rider");
-
-                                MarkerOptions riderRequestMarker = new MarkerOptions();
-                                riderRequestMarker.position(userLocation);
-                                riderRequestMarker.title(rider);
-                                riderRequestMarker.anchor(0.5f, 0.5f);
-                                riderRequestMarker.icon(BitmapDescriptorFactory.fromResource(R.drawable.rider_marker));
-
-                                markers.add(mMap.addMarker(riderRequestMarker));
-                            }
-
-                            //Add the current driver position
-                            MarkerOptions riderRequestMarker = new MarkerOptions();
-                            LatLng driverLocation = new LatLng(userLocation.getLatitude(), userLocation.getLongitude());
-                            riderRequestMarker.position(driverLocation);
-                            riderRequestMarker.title(ParseUser.getCurrentUser().getUsername());
-                            riderRequestMarker.anchor(0.5f, 0.5f);
-                            riderRequestMarker.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
-                            markers.add(mMap.addMarker(riderRequestMarker));
-
-                            LatLngBounds.Builder builder = new LatLngBounds.Builder();
-                            for (Marker marker : markers) {
-                                builder.include(marker.getPosition());
-                            }
-
-                            LatLngBounds bounds = builder.build();
-                            int padding = 0; // offset from edges of the map in pixels
-                            CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, padding);
-                            mMap.animateCamera(cu);
-                        }
-                    }
-                }
-            }
-        });*/
     }
 
     public void onButtonPressed(Uri uri) {
@@ -190,6 +154,12 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
+        if (context instanceof OnFragmentInteractionListener) {
+            mListener = (OnFragmentInteractionListener) context;
+        } else {
+            throw new RuntimeException(context.toString()
+                    + " must implement OnFragmentInteractionListener");
+        }
         mLocationManager = (LocationManager) getActivity().getSystemService(LOCATION_SERVICE);
         //Prepare Database
         mDataBase = FirebaseDatabase.getInstance();
@@ -205,7 +175,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
     }
 
     private void attachDatabaseReadListener() {
-        if (mChildEventListener == null) {
+        if (mChildEventListener == null && mCurrentUser.getUserType() == LoggedUser.DRIVER) {
             mChildEventListener = new ChildEventListener() {
 
                 @Override
@@ -220,7 +190,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
                     riderRequestMarker.position(userLocation);
                     riderRequestMarker.title(rider);
                     riderRequestMarker.anchor(0.5f, 0.5f);
-                    riderRequestMarker.icon(BitmapDescriptorFactory.fromResource(R.drawable.rider_marker));
+                    riderRequestMarker.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
                     Marker marker = mMap.addMarker(riderRequestMarker);
                     marker.setTag(dataSnapshot.getKey());
                     mMarkersHash.put(dataSnapshot.getKey(),marker);
@@ -314,22 +284,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
         mLocationListener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
-                if (mUserPositionMarker.getId() != null) {
-                    mUserPositionMarker.remove();
-                }
-                LatLng userLocation = new LatLng(location.getLatitude(), location.getLongitude());
-
-                MarkerOptions riderRequestMarker = new MarkerOptions();
-                riderRequestMarker.position(userLocation);
-                riderRequestMarker.title(mCurrentUser.getName());
-                riderRequestMarker.anchor(0.5f, 0.5f);
-                riderRequestMarker.icon(BitmapDescriptorFactory.fromResource(R.drawable.rider_marker));
-                mUserPositionMarker = mMap.addMarker(riderRequestMarker);
-                /*marker.setTag(mc);
-                mMarkersHash.put(dataSnapshot.getKey(),marker);*/
-                CameraUpdate cu = CameraUpdateFactory.newLatLngZoom(mUserPositionMarker.getPosition(), mZoomLevel);
-                mMap.animateCamera(cu);
-
+                addUserMarker(location);
             }
 
             @Override
@@ -361,6 +316,24 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
                 }
             }
         }
+    }
+
+    private void addUserMarker(Location location) {
+        if (mUserPositionMarker != null && mUserPositionMarker.getId() != null) {
+            mUserPositionMarker.remove();
+        }
+        LatLng userLocation = new LatLng(location.getLatitude(), location.getLongitude());
+
+        MarkerOptions riderRequestMarker = new MarkerOptions();
+        riderRequestMarker.position(userLocation);
+        riderRequestMarker.title(mCurrentUser.getName());
+        riderRequestMarker.anchor(0.5f, 0.5f);
+        riderRequestMarker.icon(BitmapDescriptorFactory.fromResource(R.drawable.rider_marker));
+        mUserPositionMarker = mMap.addMarker(riderRequestMarker);
+                /*marker.setTag(mc);
+                mMarkersHash.put(dataSnapshot.getKey(),marker);*/
+        CameraUpdate cu = CameraUpdateFactory.newLatLngZoom(mUserPositionMarker.getPosition(), mZoomLevel);
+        mMap.animateCamera(cu);
     }
 
     private void activateFirebaseComponents() {
@@ -398,8 +371,8 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
     }
 
     private void applyRetrieveZoomLimit() {
-        //TODO too late, change the behaviour
         mZoomLevel = ((Double) mFirebaseRemoteConfig.getDouble(CONFIG_ZOOM_LEVEL_KEY)).floatValue();
+        setUpLocationManager();
     }
 
     /**
@@ -407,8 +380,8 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
      * @param location
      */
     private void updateMap(Location location) {
-        //TODO: Add live query here and on server configuration. We need to update map everytime Requests change
         updateRequests(location);
+        addUserMarker(location);
     }
 
     @Override
@@ -416,11 +389,18 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
         mMap = googleMap;
         mMap.setOnInfoWindowClickListener(this);
         mMap.setInfoWindowAdapter(new UserWindowAdapter());
-        setUpLocationManager();
     }
 
     @Override
     public void onInfoWindowClick(Marker marker) {
+
+    }
+
+    /**
+     * Add a request e draw the path on map
+     * @param data
+     */
+    public void addRequestOnMap(Intent data) {
 
     }
 
@@ -437,6 +417,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
     public interface OnFragmentInteractionListener {
         // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
+        void onStartNewActivity(Intent intent);
     }
 
     class UserWindowAdapter implements GoogleMap.InfoWindowAdapter {
@@ -469,6 +450,5 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
             // TODO Auto-generated method stub
             return null;
         }
-
     }
 }

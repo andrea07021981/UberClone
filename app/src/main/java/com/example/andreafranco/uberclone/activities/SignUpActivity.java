@@ -1,8 +1,7 @@
-package com.example.andreafranco.uberclone;
+package com.example.andreafranco.uberclone.activities;
 
 import android.Manifest;
 import android.app.AlertDialog;
-import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -11,7 +10,6 @@ import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Patterns;
@@ -23,6 +21,8 @@ import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.Toast;
 
+import com.example.andreafranco.uberclone.R;
+import com.example.andreafranco.uberclone.activities.BaseActivity;
 import com.example.andreafranco.uberclone.models.LoggedUser;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -30,17 +30,12 @@ import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
-public class SignUpActivity extends AppCompatActivity {
+public class SignUpActivity extends BaseActivity {
 
     private static final int REQUEST_IMAGES = 1;
     private static final int REQUEST_PERMISSION_CODE = 0;
@@ -49,8 +44,6 @@ public class SignUpActivity extends AppCompatActivity {
     private EditText mNameEditText, mSurnameEditText, mEmailEditText, mPasswordEditText, mConfirmPasswordEditText;
     private Spinner mUserTypeSpinner;
     private Uri mProfileUri;
-    @SuppressWarnings("deprecation")
-    private ProgressDialog mProgressDialog;
     private AlertDialog mAlertDialog;
 
     private FirebaseAuth mAuth;
@@ -60,9 +53,7 @@ public class SignUpActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sign_up);
-
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setDisplayShowHomeEnabled(true);
+        setupToolbar();
 
         mPictureImageView = findViewById(R.id.picture_imageview);
         mNameEditText = findViewById(R.id.name_edittext);
@@ -71,7 +62,6 @@ public class SignUpActivity extends AppCompatActivity {
         mPasswordEditText = findViewById(R.id.password_edittext);
         mConfirmPasswordEditText = findViewById(R.id.confirm_password_editetext);
         mUserTypeSpinner = findViewById(R.id.usertype_spinner);
-        mProgressDialog = new ProgressDialog(this);
 
         mAuth = FirebaseAuth.getInstance();
         mUsersDatabaseReference = FirebaseDatabase.getInstance().getReference().child("users");

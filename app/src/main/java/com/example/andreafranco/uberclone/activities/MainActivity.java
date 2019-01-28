@@ -1,13 +1,10 @@
-package com.example.andreafranco.uberclone;
+package com.example.andreafranco.uberclone.activities;
 
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Build;
-import android.os.Parcelable;
-import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -18,8 +15,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.andreafranco.uberclone.R;
 import com.example.andreafranco.uberclone.models.LoggedUser;
-import com.firebase.ui.auth.AuthUI;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
@@ -31,13 +28,9 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+public class MainActivity extends BaseActivity implements View.OnClickListener {
 
     private static final int INTENT_CODE_SIGNUP = 1;
     private static final int RC_SIGN_IN = 2;
@@ -46,13 +39,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private TextView mSignUpTextView;
     private EditText mUsernameEditText, mPasswordEditText;
     private AlertDialog mAlertDialog;
-    @Retention(RetentionPolicy.SOURCE)
-    // Enumerate valid values for this interface
-    @IntDef({DRIVER, RIDER})
-    // Create an interface for validating int types
-    public @interface UserType {}
-
-
 
     // Declare the constants
     public static final int NONE = 0;
@@ -254,12 +240,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         if (requestCode == INTENT_CODE_SIGNUP && resultCode == RESULT_OK && data != null) {
-            moveToMap(data.getParcelableExtra("user"));
+            moveToMap((LoggedUser) data.getParcelableExtra("user"));
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
 
-    private void moveToMap(Parcelable user) {
+    private void moveToMap(LoggedUser user) {
         Intent intent = new Intent(this, MapsActivity.class);
         intent.putExtra("user", user);
         startActivity(intent);
