@@ -20,9 +20,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -53,10 +55,10 @@ public class HttpUtils {
      */
     public static PolylineOptions fetchImageListData(LatLng origin, LatLng destination, Context context) {
         // Origin of route
-        String str_origin = "origin=" + origin.latitude + "," + origin.longitude;
+        String str_origin = origin.latitude + "," + origin.longitude;
 
         // Destination of route
-        String str_dest = "destination=" + destination.latitude + "," + destination.longitude;
+        String str_dest = destination.latitude + "," + destination.longitude;
 
         // Api Key
         String api_key = context.getString(R.string.google_maps_key);
@@ -132,8 +134,10 @@ public class HttpUtils {
     private static URL createUrl(String query) {
         URL url = null;
         try {
-            url = new URL(query);
+            url = new URL(URLDecoder.decode(query, "UTF-8"));
         } catch (MalformedURLException e) {
+            Log.e(LOG_TAG, "Error creating URL", e);
+        } catch (UnsupportedEncodingException e) {
             Log.e(LOG_TAG, "Error creating URL", e);
         }
         return url;
