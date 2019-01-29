@@ -51,7 +51,7 @@
             android:name=".activities.SearchAddressActivity"
             android:label="Search Address"
             android:launchMode="singleTask"
-            android:theme="@style/AppTheme"
+            android:theme="@style/Transparent"
             ></activity>
     </application>
 

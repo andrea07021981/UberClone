@@ -16,6 +16,8 @@ import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.Loader;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,6 +29,7 @@ import android.widget.TextView;
 import com.example.andreafranco.uberclone.BuildConfig;
 import com.example.andreafranco.uberclone.R;
 import com.example.andreafranco.uberclone.activities.SearchAddressActivity;
+import com.example.andreafranco.uberclone.loaders.RouteLoader;
 import com.example.andreafranco.uberclone.models.LoggedUser;
 import com.example.andreafranco.uberclone.models.Request;
 import com.google.android.gms.maps.CameraUpdate;
@@ -38,6 +41,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.database.ChildEventListener;
@@ -61,10 +65,11 @@ import static android.content.Context.LOCATION_SERVICE;
  * Use the {@link MapFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleMap.OnInfoWindowClickListener {
+public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleMap.OnInfoWindowClickListener, LoaderManager.LoaderCallbacks<PolylineOptions> {
     private static final int PERMISSION_CODE = 0;
     private static final float DEFAULT_ZOOM_LEVEL = 15;
     private static final String CONFIG_ZOOM_LEVEL_KEY = "config_zoom_level_key";
+    private static final int ROUTES_LOADER_ID = 1;
 
     private GoogleMap mMap;
     private LocationManager mLocationManager;
@@ -79,6 +84,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
     private LoggedUser mCurrentUser;
     private float mZoomLevel;
     private Marker mUserPositionMarker;
+    LoaderManager mLoaderManager = null;
 
     //Firebase Variables
     private MapFragment.OnFragmentInteractionListener mListener;
@@ -133,6 +139,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
         });
 
         mMarkersHash = new HashMap<>();
+        mLoaderManager = getLoaderManager();
         return view;
     }
 
@@ -401,19 +408,40 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
      * @param data
      */
     public void addRequestOnMap(Intent data) {
+        if (data != null) {
+            LatLng originPlaceParcelableExtra = data.getParcelableExtra(SearchAddressActivity.ORIGIN);
+            LatLng destinationPlaceParcelableExtra = data.getParcelableExtra(SearchAddressActivity.DESTINATION);
+            Bundle bundle = new Bundle();
+            bundle.putParcelable(SearchAddressActivity.ORIGIN, originPlaceParcelableExtra);
+            bundle.putParcelable(SearchAddressActivity.DESTINATION, destinationPlaceParcelableExtra);
+            if (mLoaderManager.getLoader(ROUTES_LOADER_ID) == null) {
+                mLoaderManager.initLoader(ROUTES_LOADER_ID, bundle, MapFragment.this);
+            } else {
+                mLoaderManager.restartLoader(ROUTES_LOADER_ID, bundle, MapFragment.this);
+            }
+        }
+    }
+
+    @NonNull
+    @Override
+    public Loader<PolylineOptions> onCreateLoader(int i, @NonNull Bundle bundle) {
+        LatLng originPlaceParcelableExtra = bundle.getParcelable(SearchAddressActivity.ORIGIN);
+        LatLng destinationPlaceParcelableExtra = bundle.getParcelable(SearchAddressActivity.DESTINATION);
+        return new RouteLoader(getActivity(), originPlaceParcelableExtra, destinationPlaceParcelableExtra);
+    }
+
+    @Override
+    public void onLoadFinished(@NonNull Loader<PolylineOptions> loader, PolylineOptions polylineOptions) {
+        if (mMap != null && polylineOptions != null) {
+            mMap.addPolyline(polylineOptions);
+        }
+    }
+
+    @Override
+    public void onLoaderReset(@NonNull Loader<PolylineOptions> loader) {
 
     }
 
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
     public interface OnFragmentInteractionListener {
         // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);

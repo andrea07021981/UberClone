@@ -222,6 +222,9 @@ public class MainActivity extends BaseActivity implements View.OnClickListener {
                                     .child(task.getResult().getUser().getUid());
                         } else {
                             Toast.makeText(MainActivity.this, "Login error:", Toast.LENGTH_SHORT).show();
+                            if (mAlertDialog.isShowing()) {
+                                mAlertDialog.dismiss();
+                            }
                         }
                     }
                 });
