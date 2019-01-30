@@ -32,6 +32,7 @@ import com.example.andreafranco.uberclone.activities.SearchAddressActivity;
 import com.example.andreafranco.uberclone.loaders.RouteLoader;
 import com.example.andreafranco.uberclone.models.LoggedUser;
 import com.example.andreafranco.uberclone.models.Request;
+import com.example.andreafranco.uberclone.utils.GeoUtils;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -53,6 +54,7 @@ import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static android.content.Context.LOCATION_SERVICE;
@@ -269,7 +271,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
-                    Location lastKnownLocation = getLastKnownPosition();
+                    Location lastKnownLocation = GeoUtils.getLastKnownPosition(mLocationManager);
                     if (lastKnownLocation != null) {
                         updateMap(lastKnownLocation);
                     }
@@ -277,14 +279,6 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
             }
         }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-    }
-
-    private Location getLastKnownPosition() {
-        Location lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        if (lastKnownLocation == null) {
-            lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-        }
-        return lastKnownLocation;
     }
 
     private void setUpLocationManager() {
@@ -317,7 +311,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
                 requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_CODE);
             } else {
                 mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
-                Location lastKnownLocation = getLastKnownPosition();
+                Location lastKnownLocation = GeoUtils.getLastKnownPosition(mLocationManager);
                 if (lastKnownLocation != null) {
                     updateMap(lastKnownLocation);
                 }

@@ -3,10 +3,15 @@ package com.example.andreafranco.uberclone.utils;
 import android.content.Context;
 import android.location.Address;
 import android.location.Geocoder;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
+
+import com.example.andreafranco.uberclone.BuildConfig;
+import com.google.android.gms.maps.model.LatLng;
 
 import java.io.IOException;
 import java.util.List;
@@ -49,5 +54,27 @@ public class GeoUtils {
             }
         };
         thread.start();
+    }
+
+    public static Location getLastKnownPosition(LocationManager locationManager) {
+        List<String> providers = locationManager.getProviders(true);
+        Location bestLocation = null;
+        for (String provider : providers) {
+            Location l = locationManager.getLastKnownLocation(provider);
+            if (l == null) {
+                continue;
+            }
+            if (bestLocation == null || l.getAccuracy() < bestLocation.getAccuracy()) {
+                // Found best last known location: %s", l);
+                bestLocation = l;
+            }
+        }
+        if (bestLocation == null && BuildConfig.DEBUG) {
+            LatLng latLng = new LatLng(46.097732, 13.230475);
+            bestLocation = new Location("");
+            bestLocation.setLatitude(latLng.latitude);
+            bestLocation.setLongitude(latLng.longitude);
+        }
+        return bestLocation;
     }
 }

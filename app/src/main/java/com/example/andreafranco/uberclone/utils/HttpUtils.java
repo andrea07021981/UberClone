@@ -75,7 +75,7 @@ public class HttpUtils {
             Log.e(LOG_TAG, "Error during connection", e);
         }
 
-        PolylineOptions polylineOptions = extractDataFromJson(jsonResponse);;
+        PolylineOptions polylineOptions = extractDataFromJson(jsonResponse);
         return polylineOptions;
     }
 

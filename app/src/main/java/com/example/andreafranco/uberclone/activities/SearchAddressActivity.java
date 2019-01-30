@@ -11,6 +11,7 @@ import android.support.v7.widget.AppCompatEditText;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.example.andreafranco.uberclone.BuildConfig;
 import com.example.andreafranco.uberclone.R;
 import com.example.andreafranco.uberclone.utils.GeoUtils;
 import com.google.android.gms.common.api.Status;
@@ -18,6 +19,8 @@ import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
 import com.google.android.gms.location.places.ui.PlaceSelectionListener;
 import com.google.android.gms.maps.model.LatLng;
+
+import java.util.List;
 
 public class SearchAddressActivity extends BaseActivity {
 
@@ -39,7 +42,7 @@ public class SearchAddressActivity extends BaseActivity {
 
         //TODO add check for permissions or pass the current position from map
         mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        Location lastKnownPosition = getLastKnownPosition();
+        Location lastKnownPosition = GeoUtils.getLastKnownPosition(mLocationManager);
         GeoUtils.getAddressFromLocation(
                 lastKnownPosition.getLatitude(),
                 lastKnownPosition.getLongitude(),
@@ -86,14 +89,6 @@ public class SearchAddressActivity extends BaseActivity {
                 Log.i(TAG, "An error occurred: " + status);
             }
         });
-    }
-
-    private Location getLastKnownPosition() {
-        Location lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        if (lastKnownLocation == null) {
-            lastKnownLocation = mLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-        }
-        return lastKnownLocation;
     }
 
     private class GeocoderHandler extends Handler {
