@@ -22,6 +22,8 @@ import com.google.android.gms.maps.model.LatLng;
 
 import java.util.List;
 
+import static com.example.andreafranco.uberclone.BuildConfig.DEBUG;
+
 public class SearchAddressActivity extends BaseActivity {
 
     private static final String TAG = SearchAddressActivity.class.getSimpleName();
@@ -100,6 +102,13 @@ public class SearchAddressActivity extends BaseActivity {
                     mOriginAddress = bundle.getParcelable("address");
                     mOriginEditText.setText(getFormattedAddress(mOriginAddress));
                     mOriginEditText.setEnabled(false);
+                    if (DEBUG) {
+                        Intent intentResult = new Intent();
+                        intentResult.putExtra(DESTINATION, new LatLng(45.406374,11.884550));
+                        intentResult.putExtra(ORIGIN, new LatLng(mOriginAddress.getLatitude(), mOriginAddress.getLongitude()));
+                        setResult(RESULT_OK, intentResult);
+                        finish();
+                    }
                     break;
                 default:
                     mOriginAddress = null;
