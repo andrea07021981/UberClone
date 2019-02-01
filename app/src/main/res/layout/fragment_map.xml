@@ -33,4 +33,13 @@
         android:inputType="textPersonName"
         android:textAppearance="@style/TextAppearance.AppCompat.Headline"
         android:textColor="@color/browser_actions_text_color" />
+
+    <FrameLayout
+        android:id="@+id/sheet_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"></FrameLayout>
+
+    <!-- Adding bottom sheet after main content -->
+    <include layout="@layout/bottom_sheet_rider" />
 </RelativeLayout>

@@ -21,9 +21,11 @@ import android.support.v4.content.Loader;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.example.andreafranco.uberclone.BuildConfig;
@@ -95,6 +97,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
     private FirebaseDatabase mDataBase;
     private ChildEventListener mChildEventListener;
     private FirebaseRemoteConfig mFirebaseRemoteConfig;
+    private LinearLayout mBottomSheetRiderLayout;
 
     public MapFragment() {
         // Required empty public constructor
@@ -141,6 +144,9 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
             }
         });
 
+        mBottomSheetRiderLayout = view.findViewById(R.id.bottom_sheet_rider);
+        mBottomSheetRiderLayout.startAnimation(AnimationUtils.loadAnimation(getActivity(), R.anim.slide_down));
+
         mMarkersHash = new HashMap<>();
         mLoaderManager = getLoaderManager();
         return view;
@@ -173,7 +179,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
         mLocationManager = (LocationManager) getActivity().getSystemService(LOCATION_SERVICE);
         //Prepare Database
         mDataBase = FirebaseDatabase.getInstance();
-        mRequestsDatabaseReference = mDataBase.getReference().child("requests");
+        mRequestsDatabaseReference = mDataBase.getReference().child("users");
         activateFirebaseComponents();
     }
 
@@ -185,14 +191,16 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
     }
 
     private void attachDatabaseReadListener() {
-        if (mChildEventListener == null && mCurrentUser.getUserType() == LoggedUser.DRIVER) {
+        if (mChildEventListener == null && mCurrentUser.getUserType() == LoggedUser.RIDER) {
             mChildEventListener = new ChildEventListener() {
 
                 @Override
                 public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
-                    Request request = dataSnapshot.getValue(Request.class);
 
-                    //mMap.clear();
+                    Request request = dataSnapshot.getValue(Request.class);
+                    updateDriversPosition();
+
+                    /*//mMap.clear();
                     LatLng userLocation = new LatLng(request.getLatitude(), request.getLongitude());
                     String rider = request.getRiderUuid();
 
@@ -205,32 +213,6 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
                     marker.setTag(dataSnapshot.getKey());
                     mMarkersHash.put(dataSnapshot.getKey(),marker);
                     CameraUpdate cu = CameraUpdateFactory.newLatLngZoom(marker.getPosition(), mZoomLevel);
-                    mMap.animateCamera(cu);
-
-                    /*//Add the current driver position
-                    MarkerOptions driverRequestMarker = new MarkerOptions();
-                    Location lastKnownPosition = getLastKnownPosition();
-                    LatLng driverLocation = new LatLng(lastKnownPosition.getLatitude(), lastKnownPosition.getLongitude());
-                    driverRequestMarker.position(driverLocation);
-                    driverRequestMarker.title(request.getDriverUuid());
-                    driverRequestMarker.anchor(0.5f, 0.5f);
-                    driverRequestMarker.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
-                    Marker markerDriver = mMap.addMarker(driverRequestMarker);
-                    markerDriver.setTag("driver");
-                    if (!mMarkersHash.containsKey("driver")) {
-                        mMarkersHash.put("driver",marker);
-                    }
-
-                    LatLngBounds.Builder builder = new LatLngBounds.Builder();
-                    for (Object iterator : mMarkersHash.entrySet()) {
-                        Map.Entry pair = (Map.Entry) iterator;
-                        Marker markerValue = (Marker) pair.getValue();
-                        builder.include(markerValue.getPosition());
-                    }
-
-                    LatLngBounds bounds = builder.build();
-                    int padding = 10; // offset from edges of the map in pixels
-                    CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, padding);
                     mMap.animateCamera(cu);*/
 
                 }
@@ -257,6 +239,10 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
             };
             mRequestsDatabaseReference.addChildEventListener(mChildEventListener);
         }
+    }
+
+    private void updateDriversPosition() {
+
     }
 
     private void detachDatabaseReadListener() {
@@ -436,6 +422,7 @@ public class MapFragment extends Fragment implements OnMapReadyCallback, GoogleM
             }
 
             mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(),10));
+            mBottomSheetRiderLayout.startAnimation(AnimationUtils.loadAnimation(getActivity(), R.anim.slide_up));
         }
     }
 
